@@ -52,9 +52,9 @@ try {
     $env:LOCAL_WORKSPACE_PACKAGE = $stage.FullName
     Push-Location -LiteralPath $build.FullName
     try {
-        cmd.exe /d /v:off /c 'call "%LOCAL_WORKSPACE_TOOLCHAIN%" && cl /nologo /std:c++20 /utf-8 /O2 /MT /EHsc /W4 /DUNICODE /D_UNICODE /DNOMINMAX "%LOCAL_WORKSPACE_DESKTOP_SOURCE%\windows.cpp" /Fe:"%LOCAL_WORKSPACE_PACKAGE%\LocalWorkspace.Windows.exe" /link crypt32.lib advapi32.lib version.lib'
+        cmd.exe /d /v:off /c 'call "%LOCAL_WORKSPACE_TOOLCHAIN%" && cl /nologo /std:c++20 /utf-8 /O2 /MT /EHsc /W4 /DUNICODE /D_UNICODE /DNOMINMAX "%LOCAL_WORKSPACE_DESKTOP_SOURCE%\windows.cpp" /Fe:"%LOCAL_WORKSPACE_PACKAGE%\runtime\LocalWorkspace.Windows.exe" /link crypt32.lib advapi32.lib version.lib'
         if ($LASTEXITCODE -ne 0) { throw 'Windows helper compilation failed.' }
-        cmd.exe /d /v:off /c 'call "%LOCAL_WORKSPACE_TOOLCHAIN%" && cl /nologo /std:c++20 /utf-8 /O2 /MT /EHsc /W4 /DUNICODE /D_UNICODE /DNOMINMAX /I"%LOCAL_WORKSPACE_WEBVIEW_SDK%\include" "%LOCAL_WORKSPACE_DESKTOP_SOURCE%\main.cpp" /Fe:"%LOCAL_WORKSPACE_PACKAGE%\LocalWorkspace.exe" /link /SUBSYSTEM:WINDOWS "%LOCAL_WORKSPACE_WEBVIEW_SDK%\x64\WebView2LoaderStatic.lib" ole32.lib oleaut32.lib user32.lib shell32.lib shlwapi.lib gdi32.lib version.lib uuid.lib advapi32.lib'
+        cmd.exe /d /v:off /c 'call "%LOCAL_WORKSPACE_TOOLCHAIN%" && cl /nologo /std:c++20 /utf-8 /O2 /MT /EHsc /W4 /DUNICODE /D_UNICODE /DNOMINMAX /I"%LOCAL_WORKSPACE_WEBVIEW_SDK%\include" "%LOCAL_WORKSPACE_DESKTOP_SOURCE%\main.cpp" /Fe:"%LOCAL_WORKSPACE_PACKAGE%\LocalWorkspace.exe" /link /SUBSYSTEM:WINDOWS /MANIFEST:EMBED /MANIFESTINPUT:"%LOCAL_WORKSPACE_DESKTOP_SOURCE%\LocalWorkspace.manifest" "%LOCAL_WORKSPACE_WEBVIEW_SDK%\x64\WebView2LoaderStatic.lib" ole32.lib oleaut32.lib user32.lib shell32.lib shlwapi.lib gdi32.lib version.lib uuid.lib advapi32.lib'
         if ($LASTEXITCODE -ne 0) { throw 'Desktop launcher compilation failed.' }
     } finally {
         Pop-Location
@@ -80,7 +80,8 @@ try {
     $archive = Join-Path $build.FullName $archiveName
     Compress-Archive -LiteralPath $stage.FullName -DestinationPath $archive
     Move-Item -LiteralPath $archive -Destination (Join-Path $output $archiveName) -Force
-    Copy-Item -LiteralPath (Join-Path $stage.FullName 'LocalWorkspace.Windows.exe') -Destination $root
+    $sourceRuntime = New-Item -ItemType Directory -Path (Join-Path $root 'runtime') -Force
+    Copy-Item -LiteralPath (Join-Path $runtime.FullName 'LocalWorkspace.Windows.exe') -Destination $sourceRuntime.FullName
     Get-Item -LiteralPath (Join-Path $output $archiveName)
 } finally {
     $resolvedOutput = (Resolve-Path -LiteralPath $output).Path + '\'

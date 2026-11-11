@@ -49,6 +49,17 @@ fs::path dataDirectory() {
     return path;
 }
 
+void sizeForMonitor(HWND window) {
+    MONITORINFO monitor{sizeof(monitor)};
+    if (!GetMonitorInfoW(MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST), &monitor)) return;
+    const RECT area = monitor.rcWork;
+    const UINT dpi = GetDpiForWindow(window);
+    const LONG width = std::min<LONG>(MulDiv(1180, dpi, 96), area.right - area.left);
+    const LONG height = std::min<LONG>(MulDiv(800, dpi, 96), area.bottom - area.top);
+    SetWindowPos(window, nullptr, area.left + (area.right - area.left - width) / 2,
+        area.top + (area.bottom - area.top - height) / 2, width, height, SWP_NOACTIVATE | SWP_NOZORDER);
+}
+
 struct App {
     HWND window = nullptr;
     HWND status = nullptr;
@@ -103,9 +114,14 @@ struct App {
     }
 
     void resize() const {
+        if (!window) return;
         RECT bounds{};
         GetClientRect(window, &bounds);
-        if (status) MoveWindow(status, 24, 24, std::max(0L, bounds.right - 48), 80, TRUE);
+        if (status) {
+            const UINT dpi = GetDpiForWindow(window);
+            const LONG margin = MulDiv(24, dpi, 96);
+            MoveWindow(status, margin, margin, std::max(0L, bounds.right - margin * 2), MulDiv(80, dpi, 96), TRUE);
+        }
         if (controller) controller->put_Bounds(bounds);
     }
 
@@ -203,6 +219,16 @@ LRESULT CALLBACK windowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
     if (!app) return DefWindowProcW(window, message, wParam, lParam);
     switch (message) {
         case WM_SIZE: app->resize(); return 0;
+        case WM_MOVE:
+            if (app->controller) app->controller->NotifyParentWindowPositionChanged();
+            return 0;
+        case WM_DPICHANGED: {
+            const auto& bounds = *reinterpret_cast<const RECT*>(lParam);
+            SetWindowPos(window, nullptr, bounds.left, bounds.top, bounds.right - bounds.left,
+                bounds.bottom - bounds.top, SWP_NOACTIVATE | SWP_NOZORDER);
+            app->resize();
+            return 0;
+        }
         case WM_TIMER: if (wParam == startupTimer) app->checkBackend(); return 0;
         case WM_DESTROY:
             if (app->controller) app->controller->Close();
@@ -248,9 +274,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         app.window = CreateWindowExW(0, windowClass, title, WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT, CW_USEDEFAULT, 1180, 800, nullptr, nullptr, instance, &app);
         if (app.window) {
+            sizeForMonitor(app.window);
             app.status = CreateWindowW(L"STATIC", L"正在启动本机工作台…", WS_CHILD | WS_VISIBLE,
                 24, 24, 600, 80, app.window, nullptr, instance, nullptr);
             SendMessageW(app.status, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
+            app.resize();
             ShowWindow(app.window, show);
             std::wstring path(32768, L'\0');
             const DWORD size = GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));

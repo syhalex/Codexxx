@@ -4,7 +4,7 @@ if exist "LocalWorkspace.exe" (
   start "" "%~dp0LocalWorkspace.exe"
   exit /b
 )
-if not exist "LocalWorkspace.Windows.exe" (
+if not exist "runtime\LocalWorkspace.Windows.exe" (
   echo Download and extract the Windows ZIP from GitHub Releases, or run desktop\build.ps1.
   pause
   exit /b 1
