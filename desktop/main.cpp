@@ -18,6 +18,14 @@ namespace {
 constexpr wchar_t windowClass[] = L"Codexxx.LocalWorkspace.Desktop";
 constexpr wchar_t title[] = L"Codexxx";
 constexpr UINT_PTR startupTimer = 1;
+// Match the page background and loading text in public/styles.css.
+constexpr COREWEBVIEW2_COLOR workspaceBackground{255, 247, 248, 244};
+constexpr COLORREF loadingText = RGB(104, 118, 107);
+
+HBRUSH workspaceBrush(HDC dc) {
+    SetDCBrushColor(dc, RGB(workspaceBackground.R, workspaceBackground.G, workspaceBackground.B));
+    return static_cast<HBRUSH>(GetStockObject(DC_BRUSH));
+}
 
 struct Handle {
     HANDLE value = nullptr;
@@ -64,6 +72,7 @@ void sizeForMonitor(HWND window) {
 struct App {
     HWND window = nullptr;
     HWND status = nullptr;
+    HFONT statusFont = nullptr;
     Handle job;
     Handle backend;
     Handle backendOutput;
@@ -72,6 +81,20 @@ struct App {
     std::wstring origin;
     std::string output;
     ULONGLONG startTime = 0;
+
+    ~App() { if (statusFont) DeleteObject(statusFont); }
+
+    void styleStatus() {
+        if (!status) return;
+        const UINT dpi = GetDpiForWindow(window);
+        HFONT font = CreateFontW(-MulDiv(14, dpi, 96), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+            DEFAULT_PITCH | FF_SWISS, L"Microsoft YaHei");
+        if (!font) return;
+        SendMessageW(status, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
+        if (statusFont) DeleteObject(statusFont);
+        statusFont = font;
+    }
 
     bool startBackend(const fs::path& directory) {
         const auto node = directory / L"runtime" / L"node.exe";
@@ -120,8 +143,8 @@ struct App {
         GetClientRect(window, &bounds);
         if (status) {
             const UINT dpi = GetDpiForWindow(window);
-            const LONG margin = MulDiv(24, dpi, 96);
-            MoveWindow(status, margin, margin, std::max(0L, bounds.right - margin * 2), MulDiv(80, dpi, 96), TRUE);
+            const int top = bounds.right <= MulDiv(760, dpi, 96) ? 26 : 45;
+            MoveWindow(status, 0, MulDiv(top, dpi, 96), bounds.right, MulDiv(270, dpi, 96), TRUE);
         }
         if (controller) controller->put_Bounds(bounds);
     }
@@ -146,6 +169,10 @@ struct App {
                         if (!window) return S_OK;
                         if (FAILED(result) || !createdController) { fail(L"无法打开工作台窗口。"); return S_OK; }
                         controller = createdController;
+                        ComPtr<ICoreWebView2Controller2> coloredController;
+                        if (SUCCEEDED(controller.As(&coloredController))) {
+                            coloredController->put_DefaultBackgroundColor(workspaceBackground);
+                        }
                         if (FAILED(controller->get_CoreWebView2(&webview)) || !configureView() ||
                             FAILED(webview->Navigate((origin + L"/").c_str()))) {
                             fail(L"无法加载本机工作台。");
@@ -220,6 +247,21 @@ LRESULT CALLBACK windowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
     if (!app) return DefWindowProcW(window, message, wParam, lParam);
     switch (message) {
         case WM_SIZE: app->resize(); return 0;
+        case WM_ERASEBKGND: {
+            RECT bounds{};
+            GetClientRect(window, &bounds);
+            const auto dc = reinterpret_cast<HDC>(wParam);
+            FillRect(dc, &bounds, workspaceBrush(dc));
+            return TRUE;
+        }
+        case WM_CTLCOLORSTATIC:
+            if (reinterpret_cast<HWND>(lParam) == app->status) {
+                const auto dc = reinterpret_cast<HDC>(wParam);
+                SetTextColor(dc, loadingText);
+                SetBkMode(dc, TRANSPARENT);
+                return reinterpret_cast<LRESULT>(workspaceBrush(dc));
+            }
+            break;
         case WM_MOVE:
             if (app->controller) app->controller->NotifyParentWindowPositionChanged();
             return 0;
@@ -227,6 +269,7 @@ LRESULT CALLBACK windowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
             const auto& bounds = *reinterpret_cast<const RECT*>(lParam);
             SetWindowPos(window, nullptr, bounds.left, bounds.top, bounds.right - bounds.left,
                 bounds.bottom - bounds.top, SWP_NOACTIVATE | SWP_NOZORDER);
+            app->styleStatus();
             app->resize();
             return 0;
         }
@@ -236,8 +279,9 @@ LRESULT CALLBACK windowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
             app->window = nullptr;
             PostQuitMessage(0);
             return 0;
-        default: return DefWindowProcW(window, message, wParam, lParam);
+        default: break;
     }
+    return DefWindowProcW(window, message, wParam, lParam);
 }
 } // namespace
 
@@ -273,16 +317,15 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         const UINT dpi = GetDpiForSystem();
         definition.hIconSm = static_cast<HICON>(LoadImageW(instance, MAKEINTRESOURCEW(IDI_CODEXXX), IMAGE_ICON,
             GetSystemMetricsForDpi(SM_CXSMICON, dpi), GetSystemMetricsForDpi(SM_CYSMICON, dpi), 0));
-        definition.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
         definition.lpszClassName = windowClass;
         RegisterClassExW(&definition);
         app.window = CreateWindowExW(0, windowClass, title, WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT, CW_USEDEFAULT, 1180, 800, nullptr, nullptr, instance, &app);
         if (app.window) {
             sizeForMonitor(app.window);
-            app.status = CreateWindowW(L"STATIC", L"正在启动 Codexxx…", WS_CHILD | WS_VISIBLE,
-                24, 24, 600, 80, app.window, nullptr, instance, nullptr);
-            SendMessageW(app.status, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
+            app.status = CreateWindowW(L"STATIC", L"正在读取工作台", WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE,
+                0, 0, 0, 0, app.window, nullptr, instance, nullptr);
+            app.styleStatus();
             app.resize();
             ShowWindow(app.window, show);
             std::wstring path(32768, L'\0');
