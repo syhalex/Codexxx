@@ -1,6 +1,6 @@
 {
-  "name": "local-workspace",
-  "version": "1.0.1",
+  "name": "codexxx",
+  "version": "1.0.2",
   "private": true,
   "type": "module",
   "engines": { "node": ">=24" },

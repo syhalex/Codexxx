@@ -1,7 +1,7 @@
 @echo off
 cd /d "%~dp0"
-if exist "LocalWorkspace.exe" (
-  start "" "%~dp0LocalWorkspace.exe"
+if exist "Codexxx.exe" (
+  start "" "%~dp0Codexxx.exe"
   exit /b
 )
 if not exist "runtime\LocalWorkspace.Windows.exe" (

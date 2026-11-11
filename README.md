@@ -1,10 +1,10 @@
-# 本机工作台
+# Codexxx
 
 在 Windows 上集中管理 Codex 和 Antigravity 的登录、额度、中转与会话。
 
 ## Windows 下载版
 
-从 [GitHub Releases](https://github.com/syhalex/Codexxx/releases/latest) 下载 `LocalWorkspace-win-x64.zip`，完整解压后双击 `LocalWorkspace.exe`。下载包内含 Node.js 24，桌面窗口使用 Microsoft Edge WebView2 Evergreen Runtime。系统缺少 WebView2 时，启动器会提供微软的官方下载入口。
+从 [GitHub Releases](https://github.com/syhalex/Codexxx/releases/latest) 下载 `Codexxx-win-x64.zip`，完整解压后双击 `Codexxx.exe`。下载包内含 Node.js 24，桌面窗口使用 Microsoft Edge WebView2 Evergreen Runtime。系统缺少 WebView2 时，启动器会提供微软的官方下载入口。
 
 从页面标题旁可直达 Codex 和 Antigravity 的账号详情。账号、额度、会话和中转状态来自本机工作区。
 

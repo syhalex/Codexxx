@@ -4,6 +4,7 @@
 #include <shlobj.h>
 #include <wrl.h>
 #include <WebView2.h>
+#include "resources.h"
 #include <algorithm>
 #include <filesystem>
 #include <string>
@@ -15,7 +16,7 @@ namespace fs = std::filesystem;
 
 namespace {
 constexpr wchar_t windowClass[] = L"Codexxx.LocalWorkspace.Desktop";
-constexpr wchar_t title[] = L"本机工作台";
+constexpr wchar_t title[] = L"Codexxx";
 constexpr UINT_PTR startupTimer = 1;
 
 struct Handle {
@@ -263,19 +264,23 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     int result = 1;
     {
         App app;
-        WNDCLASSW definition{};
+        WNDCLASSEXW definition{};
+        definition.cbSize = sizeof(definition);
         definition.lpfnWndProc = windowProcedure;
         definition.hInstance = instance;
         definition.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-        definition.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
+        definition.hIcon = LoadIconW(instance, MAKEINTRESOURCEW(IDI_CODEXXX));
+        const UINT dpi = GetDpiForSystem();
+        definition.hIconSm = static_cast<HICON>(LoadImageW(instance, MAKEINTRESOURCEW(IDI_CODEXXX), IMAGE_ICON,
+            GetSystemMetricsForDpi(SM_CXSMICON, dpi), GetSystemMetricsForDpi(SM_CYSMICON, dpi), 0));
         definition.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
         definition.lpszClassName = windowClass;
-        RegisterClassW(&definition);
+        RegisterClassExW(&definition);
         app.window = CreateWindowExW(0, windowClass, title, WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT, CW_USEDEFAULT, 1180, 800, nullptr, nullptr, instance, &app);
         if (app.window) {
             sizeForMonitor(app.window);
-            app.status = CreateWindowW(L"STATIC", L"正在启动本机工作台…", WS_CHILD | WS_VISIBLE,
+            app.status = CreateWindowW(L"STATIC", L"正在启动 Codexxx…", WS_CHILD | WS_VISIBLE,
                 24, 24, 600, 80, app.window, nullptr, instance, nullptr);
             SendMessageW(app.status, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
             app.resize();
@@ -292,6 +297,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             }
             result = static_cast<int>(message.wParam);
         }
+        UnregisterClassW(windowClass, instance);
+        if (definition.hIconSm) DestroyIcon(definition.hIconSm);
     }
     CoUninitialize();
     return result;

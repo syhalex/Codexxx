@@ -539,7 +539,7 @@ function overview() {
   const recent = state.sessions.filter(session => !session.archived).slice(0, 4);
   const list = recent.length ? '<ul class="list">' + recent.map(session => sessionRow(session, false)).join('') + '</ul>' :
     empty('', sessionPhase === 'loading' ? '正在读取本机会话' : sessionListError || '暂无本机会话');
-  return heading('工作台', link('2FA 管理', 'totp') +
+  return heading('Codexxx', link('2FA 管理', 'totp') +
     button('refresh', '刷新额度', 'refresh-all', '', state.accounts.some(item => item.kind === 'oauth') ? '' : 'disabled') +
     button('plus', '导入账号', 'import', 'primary')) +
     '<section class="panel overview-panel">' + panelHead('账号与额度', '', '<div class="actions overview-actions">' + count(state.accounts.length + ' 个账号') +
@@ -876,7 +876,8 @@ function render() {
   const backupOpen = view === 'totp' && main.querySelector('#totp-backup-options')?.hidden === false;
   closePicker(main);
   main.innerHTML = { overview, accounts: accountsPage, quota: quotaPage, relay: relayPage, sessions: sessionPage, totp: totpPage }[view]();
-  document.title = main.querySelector('h1').textContent;
+  const title = main.querySelector('h1').textContent;
+  document.title = title === 'Codexxx' ? title : title + ' · Codexxx';
   enhancePickers(main, svg);
   if (view === 'totp') paintTotp();
   if (backupOpen) setBackupMenu(true);

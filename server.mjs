@@ -26,6 +26,7 @@ const staticTypes = {
   '/': ['index.html', 'text/html; charset=utf-8'],
   '/styles.css': ['styles.css', 'text/css; charset=utf-8'],
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
+  '/codexxx.ico': ['codexxx.ico', 'image/x-icon'],
   '/platforms/codex-desktop.png': ['platforms/codex-desktop.png', 'image/png'],
   '/platforms/antigravity.svg': ['platforms/antigravity.svg', 'image/svg+xml']
 };

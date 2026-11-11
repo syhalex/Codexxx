@@ -41,11 +41,12 @@ Get-Dependency $nodeLicense "https://raw.githubusercontent.com/nodejs/node/v$nod
     '5888dbb9a1d2b18f2c3e6c5f6af1b39de658372b402a0577b002777f14c62ace'
 
 $build = New-Item -ItemType Directory -Path (Join-Path $output ('build-' + [guid]::NewGuid().ToString('N')))
-$stage = New-Item -ItemType Directory -Path (Join-Path $build.FullName 'LocalWorkspace')
+$stage = New-Item -ItemType Directory -Path (Join-Path $build.FullName 'Codexxx')
 $runtime = New-Item -ItemType Directory -Path (Join-Path $stage.FullName 'runtime')
 $licenses = New-Item -ItemType Directory -Path (Join-Path $stage.FullName 'licenses')
 
 try {
+    Copy-Item -LiteralPath (Join-Path $root 'public\codexxx.ico') -Destination $build.FullName
     $env:LOCAL_WORKSPACE_TOOLCHAIN = $toolchain
     $env:LOCAL_WORKSPACE_WEBVIEW_SDK = Join-Path $sdk 'build\native'
     $env:LOCAL_WORKSPACE_DESKTOP_SOURCE = $PSScriptRoot
@@ -54,7 +55,7 @@ try {
     try {
         cmd.exe /d /v:off /c 'call "%LOCAL_WORKSPACE_TOOLCHAIN%" && cl /nologo /std:c++20 /utf-8 /O2 /MT /EHsc /W4 /DUNICODE /D_UNICODE /DNOMINMAX "%LOCAL_WORKSPACE_DESKTOP_SOURCE%\windows.cpp" /Fe:"%LOCAL_WORKSPACE_PACKAGE%\runtime\LocalWorkspace.Windows.exe" /link crypt32.lib advapi32.lib version.lib'
         if ($LASTEXITCODE -ne 0) { throw 'Windows helper compilation failed.' }
-        cmd.exe /d /v:off /c 'call "%LOCAL_WORKSPACE_TOOLCHAIN%" && cl /nologo /std:c++20 /utf-8 /O2 /MT /EHsc /W4 /DUNICODE /D_UNICODE /DNOMINMAX /I"%LOCAL_WORKSPACE_WEBVIEW_SDK%\include" "%LOCAL_WORKSPACE_DESKTOP_SOURCE%\main.cpp" /Fe:"%LOCAL_WORKSPACE_PACKAGE%\LocalWorkspace.exe" /link /SUBSYSTEM:WINDOWS /MANIFEST:EMBED /MANIFESTINPUT:"%LOCAL_WORKSPACE_DESKTOP_SOURCE%\LocalWorkspace.manifest" "%LOCAL_WORKSPACE_WEBVIEW_SDK%\x64\WebView2LoaderStatic.lib" ole32.lib oleaut32.lib user32.lib shell32.lib shlwapi.lib gdi32.lib version.lib uuid.lib advapi32.lib'
+        cmd.exe /d /v:off /c 'call "%LOCAL_WORKSPACE_TOOLCHAIN%" && rc /nologo /fo Codexxx.res "%LOCAL_WORKSPACE_DESKTOP_SOURCE%\resources.rc" && cl /nologo /std:c++20 /utf-8 /O2 /MT /EHsc /W4 /DUNICODE /D_UNICODE /DNOMINMAX /I"%LOCAL_WORKSPACE_WEBVIEW_SDK%\include" "%LOCAL_WORKSPACE_DESKTOP_SOURCE%\main.cpp" Codexxx.res /Fe:"%LOCAL_WORKSPACE_PACKAGE%\Codexxx.exe" /link /SUBSYSTEM:WINDOWS /MANIFEST:EMBED /MANIFESTINPUT:"%LOCAL_WORKSPACE_DESKTOP_SOURCE%\LocalWorkspace.manifest" "%LOCAL_WORKSPACE_WEBVIEW_SDK%\x64\WebView2LoaderStatic.lib" ole32.lib oleaut32.lib user32.lib shell32.lib shlwapi.lib gdi32.lib version.lib uuid.lib advapi32.lib'
         if ($LASTEXITCODE -ne 0) { throw 'Desktop launcher compilation failed.' }
     } finally {
         Pop-Location
@@ -72,11 +73,11 @@ try {
     Get-ChildItem -LiteralPath (Join-Path $root 'lib') -File -Filter '*.mjs' | Copy-Item -Destination $lib.FullName
     $public = New-Item -ItemType Directory -Path (Join-Path $stage.FullName 'public')
     $platforms = New-Item -ItemType Directory -Path (Join-Path $public.FullName 'platforms')
-    foreach ($file in @('index.html', 'app.js', 'styles.css', 'platforms\antigravity.svg', 'platforms\codex-desktop.png')) {
+    foreach ($file in @('index.html', 'app.js', 'styles.css', 'codexxx.ico', 'platforms\antigravity.svg', 'platforms\codex-desktop.png')) {
         Copy-Item -LiteralPath (Join-Path $root "public\$file") -Destination (Join-Path $public.FullName $file)
     }
 
-    $archiveName = 'LocalWorkspace-win-x64.zip'
+    $archiveName = 'Codexxx-win-x64.zip'
     $archive = Join-Path $build.FullName $archiveName
     Compress-Archive -LiteralPath $stage.FullName -DestinationPath $archive
     Move-Item -LiteralPath $archive -Destination (Join-Path $output $archiveName) -Force
