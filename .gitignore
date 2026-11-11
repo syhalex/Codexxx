@@ -1,0 +1,10 @@
+output/
+*.log
+.env
+.env.*
+auth.json
+credentials.json
+vault.dpapi
+vault.key
+workspace.enc
+LocalWorkspace.Windows.exe
