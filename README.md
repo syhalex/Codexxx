@@ -23,7 +23,7 @@
 
 登录不同账号后分别导入，即可在首页的平台卡片或账号详情中切换。切号前关闭使用同一份登录的客户端和终端，完成后重新打开。工作台会保存当前登录，必要时续期目标账号，并在核对写入的凭据后更新当前账号。
 
-Codex 切号支持 `auth.json` 文件模式，并检查 `config.toml` 中的登录方式。Antigravity 切号会同步 Windows 系统凭据、桌面回退文件和已初始化的 `agy` 登录；当前账号可从详情页重新同步。Antigravity 登录续期需要签发该凭据的 OAuth 客户端配置。可以通过导入 JSON 提供 `client_id` 和 `client_secret`，或在本机启动环境中设置 `LOCAL_WORKSPACE_GOOGLE_CLIENT_ID` 和 `LOCAL_WORKSPACE_GOOGLE_CLIENT_SECRET`。没有这组配置时，可以在客户端重新登录后再导入。
+Codex 切号支持 `auth.json` 文件模式，并检查 `config.toml` 中的登录方式。Antigravity 切号会同步 Windows 系统凭据、桌面回退文件和已初始化的 `agy` 登录。当前账号可从详情页重新同步。Antigravity 登录续期需要签发该凭据的 OAuth 客户端配置。可以通过导入 JSON 提供 `client_id` 和 `client_secret`，或在本机启动环境中设置 `LOCAL_WORKSPACE_GOOGLE_CLIENT_ID` 和 `LOCAL_WORKSPACE_GOOGLE_CLIENT_SECRET`。缺少这组配置时，工作台可通过已安装的 Antigravity 桌面应用查询当前 Windows 共享登录的个人账号额度。
 
 账号详情提供终端启动、标签、切换、额度刷新、导出和回收站。终端启动要求对应 CLI 在 `PATH` 中，订阅账号会先切换本机客户端登录。账号资料导出默认只包含资料，选择含登录凭据的 JSON 可用于恢复登录。移入回收站后可恢复账号资料和凭据。
 

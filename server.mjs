@@ -5,14 +5,14 @@ import { readFile, readdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createVault, parseJson, UserError } from './lib/storage.mjs';
-import { canSwitch, codexSubscriptionExpiry, exportCredential, fetchCodexSubscription, fetchModels, fetchQuota, makeAccount, providers, readLocal, refreshToken, resolveAntigravityModel, updateAccountIdentity, validModelId, writeLocal } from './lib/providers.mjs';
+import { AntigravityOAuthConfigError, canSwitch, codexSubscriptionExpiry, exportCredential, fetchCodexSubscription, fetchModels, fetchQuota, makeAccount, providers, readLocal, refreshToken, resolveAntigravityModel, updateAccountIdentity, validModelId, writeLocal } from './lib/providers.mjs';
 import { getSession, scanSessions, sessionSummary } from './lib/sessions.mjs';
 import { sessionUsage } from './lib/session-usage.mjs';
 import { createPricingCatalog } from './lib/model-pricing.mjs';
 import { normalizeTotp, openTotpBackup, sealTotp, totpIdentity, totpSnapshot } from './lib/totp.mjs';
 import { createRelay, readJson, sendJson, wakeModel } from './lib/relay.mjs';
 import { canLaunch, openCli, prepareCli } from './lib/cli.mjs';
-import { wakeAntigravity } from './lib/antigravity-wake.mjs';
+import { fetchAntigravityDesktopQuota, wakeAntigravity } from './lib/antigravity-wake.mjs';
 
 if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('需要 Node.js 24 或更新版本');
 
@@ -256,21 +256,31 @@ async function switchAccount(id, terminal) {
   }
 }
 
+async function queryQuota(state, account) {
+  await ensureToken(state, account);
+  try {
+    return await fetchQuota(account);
+  } catch (error) {
+    if (error.status !== 401 || !account.token.refresh ||
+        account.provider !== 'antigravity' && state.active[account.provider] === account.id) throw error;
+    await refreshToken(account, true);
+    return fetchQuota(account);
+  }
+}
+
 async function refreshQuota(id) {
   if (quotaRefreshes.has(id)) return quotaRefreshes.get(id);
   const request = vault.change(async state => {
     const account = findAccount(state, id);
     try {
       if (account.kind === 'key') throw new UserError('API 密钥没有订阅额度');
-      await ensureToken(state, account);
-      try {
-        account.quota = await fetchQuota(account);
-      } catch (error) {
-        if (error.status !== 401 || !account.token.refresh ||
-            account.provider !== 'antigravity' && state.active[account.provider] === account.id) throw error;
-        await refreshToken(account, true);
-        account.quota = await fetchQuota(account);
-      }
+      account.quota = await queryQuota(state, account).catch(async error => {
+        if (!(error instanceof AntigravityOAuthConfigError) || state.active.antigravity !== id) throw error;
+        const { local, account: login } = await nativeAccount('antigravity');
+        if (!local.usesKeyring || !login?.email || (login.native.auth_method || 'consumer') !== 'consumer' ||
+            !sameAccount(account, login)) throw error;
+        return fetchAntigravityDesktopQuota(account, login.email);
+      });
       account.quotaAt = Date.now();
       account.quotaError = '';
       return true;
